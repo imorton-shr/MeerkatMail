@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meerkat Explorer</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&amp;family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['Fredoka', 'cursive'],
+            body: ['Quicksand', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { height: 100%; margin: 0; }
+
+    .app-shell { height: 100%; overflow: auto; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-3deg); }
+      75% { transform: rotate(3deg); }
+    }
+    @keyframes pop-in {
+      0% { opacity: 0; transform: scale(0.8); }
+      60% { transform: scale(1.05); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slide-up {
+      0% { opacity: 0; transform: translateY(30px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50% { opacity: 1; transform: scale(1) rotate(180deg); }
+    }
+    @keyframes bounce-soft {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+      50% { box-shadow: 0 0 20px 8px rgba(251, 191, 36, 0.2); }
+    }
+
+    .animate-float { animation: float 3s ease-in-out infinite; }
+    .animate-wiggle { animation: wiggle 2s ease-in-out infinite; }
+    .animate-pop-in { animation: pop-in 0.5s ease-out forwards; }
+    .animate-slide-up { animation: slide-up 0.6s ease-out forwards; }
+    .animate-sparkle { animation: sparkle 2s ease-in-out infinite; }
+    .animate-bounce-soft { animation: bounce-soft 1.5s ease-in-out infinite; }
+    .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+    .card-hover { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .card-hover:hover { transform: translateY(-6px) scale(1.02); }
+
+    .btn-bounce { transition: all 0.2s ease; }
+    .btn-bounce:hover { transform: scale(1.08); }
+    .btn-bounce:active { transform: scale(0.95); }
+
+    .modal-overlay {
+      transition: opacity 0.3s ease;
+    }
+    .modal-content {
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    }
+
+    .sand-pattern {
+      background-image:
+        radial-gradient(circle at 20% 80%, rgba(251, 191, 36, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(217, 119, 6, 0.05) 0%, transparent 70%);
+    }
+
+    .lang-btn-active {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+    }
+
+    .topic-btn-active {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    }
+
+    .audio-ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    .audio-ripple::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      opacity: 0;
+      background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+      transition: opacity 0.3s;
+    }
+    .audio-ripple.playing::after {
+      opacity: 1;
+      animation: sparkle 1.5s ease-in-out infinite;
+    }
+
+    .fact-chip {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .fact-chip:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    }
+
+    /* Scrollbar */
+    .app-shell::-webkit-scrollbar { width: 8px; }
+    .app-shell::-webkit-scrollbar-track { background: #fef3c7; }
+    .app-shell::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 4px; }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app" class="app-shell w-full font-body" style="background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 40%, #fde68a 100%);"><!-- Floating decorations -->
+   <div class="fixed top-10 left-6 text-4xl animate-float opacity-60 pointer-events-none" style="animation-delay: 0s;">
+    🌵
+   </div>
+   <div class="fixed top-20 right-8 text-3xl animate-float opacity-50 pointer-events-none" style="animation-delay: 1s;">
+    ☀️
+   </div>
+   <div class="fixed bottom-20 left-10 text-3xl animate-float opacity-40 pointer-events-none" style="animation-delay: 0.5s;">
+    🦎
+   </div>
+   <div class="fixed bottom-32 right-6 text-4xl animate-float opacity-50 pointer-events-none" style="animation-delay: 1.5s;">
+    🌴
+   </div><!-- HEADER -->
+   <header class="relative overflow-hidden">
+    <div class="sand-pattern py-8 px-4 text-center relative z-10">
+     <div class="animate-wiggle inline-block text-6xl mb-3">
+      🦡
+     </div>
+     <h1 id="site-title" class="font-heading text-4xl md:text-5xl font-bold text-amber-900 drop-shadow-sm mb-2">Meerkat Explorer</h1>
+     <p id="welcome-msg" class="text-amber-700 text-lg md:text-xl font-medium max-w-lg mx-auto" data-en="Explore the amazing world of meerkats and their homes!" data-th="สำรวจโลกมหัศจรรย์ของเมียร์แคตและบ้านของพวกเขา!" data-ch="探索猫鼬和它们家园的奇妙世界！">Explore the amazing world of meerkats and their homes!</p>
+     <p class="text-amber-600 text-sm mt-1 italic" data-en="Based on Meerkat Mail by Emily Gravett 📚" data-th="จากหนังสือ Meerkat Mail โดย Emily Gravett 📚" data-ch="改编自 Emily Gravett 的《猫鼬邮件》📚">Based on Meerkat Mail by Emily Gravett 📚</p>
+    </div>
+   </header><!-- LANGUAGE SELECTOR -->
+   <section class="px-4 py-5 max-w-2xl mx-auto">
+    <div class="flex items-center justify-center gap-2 mb-3"><i data-lucide="globe" class="w-5 h-5 text-amber-700"></i> <span class="font-heading text-amber-800 font-semibold text-lg" data-en="Choose Language" data-th="เลือกภาษา" data-ch="选择语言">Choose Language</span>
+    </div>
+    <div class="flex flex-wrap justify-center gap-3" id="lang-buttons"><button onclick="switchLanguage('en')" class="lang-btn btn-bounce px-5 py-2.5 rounded-full font-heading font-semibold text-base border-2 border-amber-300 bg-white text-amber-800 hover:border-amber-400 lang-btn-active" data-lang="en"> 🇬🇧 English </button> <button onclick="switchLanguage('th')" class="lang-btn btn-bounce px-5 py-2.5 rounded-full font-heading font-semibold text-base border-2 border-amber-300 bg-white text-amber-800 hover:border-amber-400" data-lang="th"> 🇹🇭 ไทย </button> <button onclick="switchLanguage('ch')" class="lang-btn btn-bounce px-5 py-2.5 rounded-full font-heading font-semibold text-base border-2 border-amber-300 bg-white text-amber-800 hover:border-amber-400" data-lang="ch"> 🇨🇳 中文 </button>
+    </div>
+   </section><!-- TOPIC SELECTOR -->
+   <section class="px-4 pb-4 max-w-2xl mx-auto">
+    <div class="flex items-center justify-center gap-2 mb-3"><i data-lucide="compass" class="w-5 h-5 text-emerald-700"></i> <span class="font-heading text-emerald-800 font-semibold text-lg" data-en="Pick a Topic" data-th="เลือกหัวข้อ" data-ch="选择主题">Pick a Topic</span>
+    </div>
+    <div class="flex flex-wrap justify-center gap-3" id="topic-buttons"><button onclick="switchTopic('meerkats')" class="topic-btn btn-bounce px-5 py-2.5 rounded-full font-heading font-semibold text-base border-2 border-emerald-300 bg-white text-emerald-800 hover:border-emerald-400 topic-btn-active" data-topic="meerkats"> 🦡 <span data-en="Meerkats" data-th="เมียร์แคต" data-ch="猫鼬">Meerkats</span> </button> <button onclick="switchTopic('kalahari')" class="topic-btn btn-bounce px-5 py-2.5 rounded-full font-heading font-semibold text-base border-2 border-emerald-300 bg-white text-emerald-800 hover:border-emerald-400" data-topic="kalahari"> 🏜️ <span data-en="Kalahari Desert" data-th="ทะเลทรายคาลาฮารี" data-ch="卡拉哈里沙漠">Kalahari Desert</span> </button> <button onclick="switchTopic('madagascar')" class="topic-btn btn-bounce px-5 py-2.5 rounded-full font-heading font-semibold text-base border-2 border-emerald-300 bg-white text-emerald-800 hover:border-emerald-400" data-topic="madagascar"> 🌳 <span data-en="Madagascar Forests" data-th="ป่ามาดากัสการ์" data-ch="马达加斯加森林">Madagascar Forests</span> </button>
+    </div>
+   </section><!-- CONTENT AREA -->
+   <main class="px-4 pb-10 max-w-4xl mx-auto" id="content-area"><!-- Dynamically populated -->
+   </main><!-- MODAL -->
+   <div id="modal-overlay" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4" style="display:none; background: rgba(0,0,0,0.5);">
+    <div id="modal-content" class="modal-content bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[85%] overflow-y-auto p-6 relative"><button onclick="closeModal()" class="absolute top-3 right-3 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"> <i data-lucide="x" class="w-5 h-5 text-gray-500"></i> </button>
+     <div id="modal-emoji" class="text-5xl text-center mb-3"></div>
+     <h2 id="modal-title" class="font-heading text-2xl font-bold text-center text-gray-800 mb-4"></h2>
+     <div id="modal-body" class="text-gray-700 leading-relaxed text-base"></div>
+     <div class="mt-5 flex justify-center"><button onclick="playModalAudio()" id="modal-audio-btn" class="audio-ripple btn-bounce flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-white font-heading font-semibold shadow-lg hover:shadow-xl"> <i data-lucide="volume-2" class="w-5 h-5"></i> <span data-en="Listen" data-th="ฟัง" data-ch="听一听">Listen</span> 🔊 </button>
+     </div>
+    </div>
+   </div><!-- Footer -->
+   <footer class="text-center py-6 px-4">
+    <p class="text-amber-700 text-sm font-medium" data-en="🦡 Keep exploring! Meerkats are amazing! 🌍" data-th="🦡 สำรวจต่อไป! เมียร์แคตน่าทึ่ง! 🌍" data-ch="🦡 继续探索！猫鼬太棒了！🌍">🦡 Keep exploring! Meerkats are amazing! 🌍</p>
+   </footer>
+  </div>
+  <script>
+// ── State ──
+let currentLanguage = "en";
+let currentTopic = "meerkats";
+let currentAudio = null;
+let currentModalAudioId = null;
+
+// ── Audio System ──
+function playAudio(id) {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    document.querySelectorAll('.audio-ripple').forEach(el => el.classList.remove('playing'));
+  }
+  const file = `audio/${id}-${currentLanguage}.mp3`;
+  currentAudio = new Audio(file);
+  const btn = document.getElementById('modal-audio-btn');
+  if (btn) btn.classList.add('playing');
+  currentAudio.play().catch(() => {
+    console.log("Missing audio:", file);
+    if (btn) btn.classList.remove('playing');
+  });
+  currentAudio.addEventListener('ended', () => {
+    if (btn) btn.classList.remove('playing');
+  });
+}
+
+function playModalAudio() {
+  if (currentModalAudioId) {
+    playAudio(currentModalAudioId);
+  }
+}
+
+// ── Data ──
+const topicData = {
+  meerkats: {
+    emoji: "🦡",
+    title: { en: "All About Meerkats", th: "ทั้งหมดเกี่ยวกับเมียร์แคต", ch: "关于猫鼬" },
+    intro: {
+      en: "Meerkats are small, clever animals that live in groups called mobs. They stand on their back legs to watch for danger! In 'Meerkat Mail', Sunny the meerkat travels the world and sends postcards home.",
+      th: "เมียร์แคตเป็นสัตว์ตัวเล็กที่ฉลาด อาศัยอยู่เป็นกลุ่มที่เรียกว่า mob พวกมันยืนด้วยขาหลังเพื่อเฝ้าระวังอันตราย! ใน 'Meerkat Mail' ซันนี่เมียร์แคตท่องเที่ยวไปทั่วโลกและส่งไปรษณีย์กลับบ้าน",
+      ch: "猫鼬是聪明的小动物，成群生活。它们用后腿站立来观察危险！在《猫鼬邮件》中，Sunny猫鼬环游世界并寄明信片回家。"
+    },
+    cards: [
+      {
+        id: "meerkat-family",
+        emoji: "👨‍👩‍👧‍👦",
+        color: "from-amber-400 to-yellow-400",
+        border: "border-amber-300",
+        bg: "bg-amber-50",
+        title: { en: "Meerkat Families", th: "ครอบครัวเมียร์แคต", ch: "猫鼬家庭" },
+        short: { en: "They live in big groups!", th: "พวกมันอยู่เป็นกลุ่มใหญ่!", ch: "它们成群生活！" },
+        detail: {
+          en: "Meerkats live in groups of up to 30! They are called a 'mob' or 'gang'. They help each other find food and stay safe. Baby meerkats are called 'pups' and everyone helps look after them. There is usually one mother who is in charge, called the 'alpha female'. Every member of the mob has a special job to do!",
+          th: "เมียร์แคตอาศัยอยู่เป็นกลุ่มมากถึง 30 ตัว! กลุ่มของพวกมันเรียกว่า 'mob' หรือ 'gang' พวกมันช่วยกันหาอาหารและดูแลความปลอดภัย ลูกเมียร์แคตเรียกว่า 'pups' และทุกตัวช่วยดูแลพวกมัน โดยปกติจะมีแม่ตัวหนึ่งที่อำนาจสูงสุดเรียกว่า 'alpha female' สมาชิกทุกตัวในกลุ่มมีหน้าที่พิเศษ!",
+          ch: "猫鼬最多30只一起生活！它们的群体叫做'暴民'或'帮派'。它们互相帮助寻找食物和保持安全。小猫鼬叫做'幼崽'，每个人都帮忙照顾它们。通常有一只母猫鼬当头领，叫做'阿尔法雌性'。群体中的每个成员都有特殊的工作！"
+        }
+      },
+      {
+        id: "meerkat-guard",
+        emoji: "👀",
+        color: "from-orange-400 to-red-400",
+        border: "border-orange-300",
+        bg: "bg-orange-50",
+        title: { en: "Standing Guard", th: "ยืนเฝ้าระวัง", ch: "站岗放哨" },
+        short: { en: "Lookout meerkats keep watch!", th: "เมียร์แคตยามเฝ้าระวัง!", ch: "哨兵猫鼬站岗！" },
+        detail: {
+          en: "One meerkat always stands guard while others eat. The guard stands tall on its back legs and watches for eagles, hawks, and jackals. If danger comes, it makes a loud bark to warn everyone! Different barks mean different dangers — like 'eagle in the sky!' or 'snake nearby!' Everyone understands these alarm calls and knows exactly what to do.",
+          th: "เมียร์แคตตัวหนึ่งจะยืนเฝ้าเสมอขณะที่ตัวอื่นกินอาหาร ยามจะยืนตัวตรงด้วยขาหลังและเฝ้าดูนกอินทรี เหยี่ยว และหมาจิ้งจอก ถ้ามีอันตราย มันจะส่งเสียงเห่าดังเพื่อเตือนทุกตัว! เสียงเห่าต่างๆ หมายถึงอันตรายต่างๆ — เช่น 'นกอินทรีบนท้องฟ้า!' หรือ 'งูอยู่ใกล้ๆ!' ทุกตัวเข้าใจสัญญาณแจ้งเตือนเหล่านี้และรู้ว่าต้องทำอย่างไร",
+          ch: "当其他猫鼬吃东西时，总有一只站岗。哨兵用后腿站得高高的，观察老鹰、鹰和豺狼。如果有危险，它会大声叫来警告大家！不同的叫声意味着不同的危险——比如'天空中有老鹰！'或'附近有蛇！'每个人都能理解这些警报，并确切知道该怎么做。"
+        }
+      },
+      {
+        id: "meerkat-tunnels",
+        emoji: "🕳️",
+        color: "from-yellow-500 to-amber-500",
+        border: "border-yellow-300",
+        bg: "bg-yellow-50",
+        title: { en: "Underground Tunnels", th: "อุโมงค์ใต้ดิน", ch: "地下隧道" },
+        short: { en: "They dig amazing burrows!", th: "พวกมันขุดโพรงที่น่าทึ่ง!", ch: "它们挖出了惊人的洞穴！" },
+        detail: {
+          en: "Meerkats dig underground tunnels called burrows using their strong claws. These burrows have many rooms — sleeping chambers, nurseries for babies, storage rooms for food, and even separate toilet areas! A large burrow can have 10 to 20 tunnels. The tunnels keep them cool in the hot desert (underground is always cooler!) and safe from predators at night.",
+          th: "เมียร์แคตขุดอุโมงค์ใต้ดินที่เรียกว่าโพรงโดยใช้เล็บที่แข็งแกร่ง อุโมงค์เหล่านี้มีหลายห้อง — ห้องนอน ห้องเด็ก ห้องเก็บอาหาร และแม้แต่ห้องน้ำแยก! โพรงขนาดใหญ่สามารถมีอุโมงค์ 10 ถึง 20 แห่ง อุโมงค์ช่วยให้พวกมันเย็นสบายในทะเลทรายร้อน (ใต้ดินเย็นกว่าเสมอ!) และปลอดภัยจากนักล่าตอนกลางคืน",
+          ch: "猫鼬用锋利的爪子挖掘叫做洞穴的地下隧道。这些洞穴有很多房间——卧室、婴儿房、食物储藏室，甚至单独的厕所区域！一个大型洞穴可能有10到20条隧道。隧道让它们在炎热的沙漠里保持凉爽（地下总是更凉爽！），并在夜间远离捕食者。"
+        }
+      },
+      {
+        id: "meerkat-food",
+        emoji: "🦂",
+        color: "from-lime-400 to-green-500",
+        border: "border-lime-300",
+        bg: "bg-lime-50",
+        title: { en: "What They Eat", th: "พวกมันกินอะไร", ch: "它们吃什么" },
+        short: { en: "Bugs, scorpions and more!", th: "แมลง แมงป่อง และอื่นๆ!", ch: "虫子、蝎子等等！" },
+        detail: {
+          en: "Meerkats are carnivores and eat insects, scorpions, spiders, small lizards, and sometimes small mammals. They are immune to some scorpion venom because they eat so many scorpions! Adult meerkats teach the pups how to hunt and eat scorpions safely by first removing the stinger. A meerkat eats about 40-60 insects per day! They also get water from the food they eat.",
+          th: "เมียร์แคตเป็นสัตว์กินเนื้อและกินแมลง แมงป่อง แมงมุม จิ้งจกตัวเล็ก และบางครั้งสัตว์เลี้ยงลูกด้วยนมตัวเล็ก พวกมันมีภูมิต้านทานต่อพิษแมงป่องบางชนิดเพราะกินแมงป่องมากมาย! เมียร์แคตตัวโตสอนลูกๆ วิธีล่าและกินแมงป่องอย่างปลอดภัยโดยเอาเหล็กในออกก่อน เมียร์แคตตัวหนึ่งกินแมลง 40-60 ตัวต่อวัน! พวกมันได้รับน้ำจากอาหารที่พวกมันกินด้วย",
+          ch: "猫鼬是肉食动物，吃昆虫、蝎子、蜘蛛、小蜥蜴，有时还吃小哺乳动物。它们对某些蝎子毒液免疫，因为它们吃的蝎子很多！成年猫鼬教幼崽如何安全地捕猎和吃蝎子，先去掉毒刺。一只猫鼬每天吃40-60只昆虫！它们还从吃的食物中获取水分。"
+        }
+      },
+      {
+        id: "meerkat-size",
+        emoji: "📏",
+        color: "from-pink-400 to-rose-500",
+        border: "border-pink-300",
+        bg: "bg-pink-50",
+        title: { en: "How Big Are They?", th: "พวกมันใหญ่แค่ไหน?", ch: "它们有多大？" },
+        short: { en: "Very tiny but mighty!", th: "เล็กมากแต่แกร่ง!", ch: "很小但很强大！" },
+        detail: {
+          en: "Adult meerkats weigh only 0.7 to 1.4 kilograms (about 1.5 to 3 pounds) — they are smaller than a rabbit! Despite their tiny size, they are brave and can fight predators. Their long tail helps them balance when standing on their back legs and acts like a pole vault when they jump!",
+          th: "เมียร์แคตตัวโตมีน้ำหนักเพียง 0.7 ถึง 1.4 กิโลกรัม (ประมาณ 1.5 ถึง 3 ปอนด์) — พวกมันเล็กกว่ากระต่าย! แม้จะมีขนาดเล็ก พวกมันกล้าหาญและสามารถต่อสู้กับนักล่าได้ หางยาวของพวกมันช่วยให้สมดุลเมื่อยืนด้วยขาหลังและทำหน้าที่เหมือนเสา pole vault เมื่อพวกมันกระโดด!",
+          ch: "成年猫鼬的体重仅为0.7到1.4公斤（约1.5到3磅）——它们比兔子还小！尽管体型很小，它们很勇敢，可以与捕食者搏斗。它们的长尾巴在用后腿站立时帮助保持平衡，在跳跃时就像撑杆跳的杆子！"
+        }
+      },
+      {
+        id: "meerkat-communicate",
+        emoji: "💬",
+        color: "from-purple-400 to-indigo-500",
+        border: "border-purple-300",
+        bg: "bg-purple-50",
+        title: { en: "How They Talk", th: "พวกมันพูดอย่างไร", ch: "它们如何交流" },
+        short: { en: "They make different sounds!", th: "พวกมันทำเสียงต่างๆ!", ch: "它们发出不同的声音！" },
+        detail: {
+          en: "Meerkats 'talk' with many sounds and body language. They chirp, bark, purr, and hiss. Each sound has a different meaning — alarm calls warn of danger, while soft chirps are friendly greetings. They also touch each other, groom (clean fur), and rub their scent on everything to mark territory and say 'this is our home!'",
+          th: "เมียร์แคต 'พูด' ด้วยเสียงและภาษากายที่หลากหลาย พวกมันจัก เห่า พึมพำ และฟัด เสียงแต่ละเสียงมีความหมายต่างกัน — สัญญาณแจ้งเตือนเตือนอันตราย ในขณะที่จัก soft เป็นการทักทายที่เป็นมิตร พวกมันยังสัมผัสกัน ดูแลขน (ทำความสะอาดขน) และขัดกลิ่นของพวกมันบนทุกอย่างเพื่อทำเครื่องหมายอาณาเขตและพูดว่า 'นี่คือบ้านของเรา!'",
+          ch: "猫鼬用许多声音和肢体语言'交流'。它们啁啾、吠叫、呜鸣和嘶鸣。每种声音都有不同的含义——警报叫声警告有危险，而柔和的啁啾声是友好的问候。它们还互相接触、梳理毛皮、在身上涂抹气味来标记领地，说'这是我们的家！'"
+        }
+      }
+    ],
+    facts: [
+      {
+        id: "fact-eyes",
+        emoji: "😎",
+        title: { en: "Dark Eye Patches", th: "แถบตาสีเข้ม", ch: "黑眼圈" },
+        text: { en: "The dark patches around their eyes help reduce sun glare — like natural sunglasses! They also help meerkats recognize each other." , th: "แถบสีเข้มรอบดวงตาช่วยลดแสงจ้า — เหมือนแว่นกันแดดธรรมชาติ! พวกมันยังช่วยให้เมียร์แคตรู้จักกันด้วย", ch: "眼睛周围的黑色斑块帮助减少阳光眩光——就像天然的太阳镜！它们也帮助猫鼬相互认识。" }
+      },
+      {
+        id: "fact-teach",
+        emoji: "🎓",
+        title: { en: "Meerkat Teachers", th: "ครูเมียร์แคต", ch: "猫鼬老师" },
+        text: { en: "Older meerkats teach young ones how to hunt — they are real animal teachers! They start by teaching pups with dead scorpions, then live ones with tails removed, and finally full live scorpions.", th: "เมียร์แคตตัวโตสอนตัวเล็กล่าเหยื่อ — พวกมันเป็นครูสัตว์ตัวจริง! พวกมันเริ่มต้นด้วยการสอนลูกๆ ด้วยแมงป่องตาย จากนั้นแมงป่องมีชีวิตที่ไม่มีหาง และในที่สุดแมงป่องมีชีวิตเต็มตัว", ch: "年长的猫鼬教小猫鼬如何捕猎——它们是真正的动物老师！它们从教幼崽死蝎子开始，然后是去尾活蝎子，最后是完整的活蝎子。" }
+      },
+      {
+        id: "fact-sunny",
+        emoji: "🌅",
+        title: { en: "Morning Sun Bath", th: "อาบแดดตอนเช้า", ch: "早晨日光浴" },
+        text: { en: "Every morning, meerkats stand facing the sun in a group to warm up! This helps them digest food and prepares them for the day ahead.", th: "ทุกเช้า เมียร์แคตยืนหันหน้าเข้าหาดวงอาทิตย์เป็นกลุ่มเพื่ออุ่นตัว! สิ่งนี้ช่วยให้พวกมันย่อยอาหารและเตรียมพวกมันสำหรับวันข้างหน้า", ch: "每天早上，猫鼬面向太阳以小组的方式站立取暖！这帮助它们消化食物并为新的一天做准备。" }
+      },
+      {
+        id: "fact-babies",
+        emoji: "👶",
+        title: { en: "Baby Meerkats", th: "ลูกเมียร์แคต", ch: "小猫鼬宝宝" },
+        text: { en: "Baby meerkats are born tiny and helpless. The whole mob takes turns babysitting! Some meerkats stay home to look after the pups while others hunt.", th: "ลูกเมียร์แคตเกิดมาตัวเล็กและช่วยเหลือไม่ได้ กลุ่มทั้งหมดหมุนเวียนดูแลเด็ก! เมียร์แคตบางตัวอยู่บ้านเพื่อดูแลลูกๆ ในขณะที่ตัวอื่นล่าเหยื่อ", ch: "小猫鼬生下来又小又无助。整个群体轮流看护！一些猫鼬留在家里照顾幼崽，而其他的则去捕猎。" }
+      },
+      {
+        id: "fact-lifespan",
+        emoji: "⏱️",
+        title: { en: "How Long Do They Live?", th: "พวกมันมีชีวิตนานแค่ไหน?", ch: "它们能活多久？" },
+        text: { en: "In the wild, meerkats live about 6-7 years. In captivity (like in zoos), they can live 12-14 years!", th: "ในป่า เมียร์แคตมีชีวิตประมาณ 6-7 ปี ในการเลี้ยงเลี้ยง (เช่นในสวนสัตว์) พวกมันสามารถมีชีวิตได้ 12-14 ปี!", ch: "在野外，猫鼬活6-7年左右。在人工饲养中（如动物园），它们可以活12-14年！" }
+      }
+    ]
+  },
+  kalahari: {
+    emoji: "🏜️",
+    title: { en: "The Kalahari Desert", th: "ทะเลทรายคาลาฮารี", ch: "卡拉哈里沙漠" },
+    intro: {
+      en: "The Kalahari Desert is a huge sandy area in Africa where meerkats live! It is hot during the day, cold at night, and has amazing animals. In Meerkat Mail, Sunny travels to different places, but the Kalahari is the meerkat home!",
+      th: "ทะเลทรายคาลาฮารีเป็นพื้นที่ทรายขนาดใหญ่ในแอฟริกาที่เมียร์แคตอาศัยอยู่! ร้อนตอนกลางวัน หนาวตอนกลางคืน และมีสัตว์น่าทึ่งมากมาย ใน Meerkat Mail ซันนี่ท่องเที่ยวไปต่างที่ แต่คาลาฮารีคือบ้านของเมียร์แคต!",
+      ch: "卡拉哈里沙漠是非洲的一片巨大沙地，是猫鼬的家！白天很热，晚上很冷，有很多奇妙的动物。在《猫鼬邮件》中，Sunny去不同的地方旅行，但卡拉哈里是猫鼬的家乡！"
+    },
+    cards: [
+      {
+        id: "kalahari-size",
+        emoji: "🗺️",
+        color: "from-orange-400 to-red-500",
+        border: "border-orange-300",
+        bg: "bg-orange-50",
+        title: { en: "How Big Is It?", th: "มันใหญ่แค่ไหน?", ch: "它有多大？" },
+        short: { en: "Bigger than many countries!", th: "ใหญ่กว่าหลายประเทศ!", ch: "比很多国家还大！" },
+        detail: {
+          en: "The Kalahari Desert stretches across three African countries — Botswana, Namibia, and South Africa. It covers about 900,000 square kilometres (347,000 square miles)! That's about the size of Egypt. The desert is not just one giant sand dune — it has grasslands, bushes, and scattered trees. Some parts are sandy, while others are red soil and small gravel.",
+          th: "ทะเลทรายคาลาฮารีทอดยาวข้ามสามประเทศแอฟริกา — บอตสวานา นามิเบีย และแอฟริกาใต้ ครอบคลุมพื้นที่ประมาณ 900,000 ตารางกิโลเมตร (347,000 ตารางไมล์)! นั่นเท่ากับขนาดของอียิปต์ ทะเลทรายไม่ใช่เพียงเนินทรายยักษ์เนื่องที่เดียว — มีทุ่งหญ้า พุ่มไม้ และต้นไม้กระจัดกระจาย บางส่วนเป็นทรายบ้าง ส่วนอื่นๆ เป็นดินสีแดงและกรวดเล็ก",
+          ch: "卡拉哈里沙漠横跨非洲的三个国家——博茨瓦纳、纳米比亚和南非。它覆盖约900,000平方公里（347,000平方英里）！这大约是埃及的大小。沙漠不仅仅是一个巨大的沙丘——它有草地、灌木和分散的树木。有些部分是沙地，而其他部分是红土和小砾石。"
+        }
+      },
+      {
+        id: "kalahari-weather",
+        emoji: "🌡️",
+        color: "from-red-400 to-pink-500",
+        border: "border-red-300",
+        bg: "bg-red-50",
+        title: { en: "Hot Days, Cold Nights", th: "กลางวันร้อน กลางคืนหนาว", ch: "白天热，晚上冷" },
+        short: { en: "Temperature changes a lot!", th: "อุณหภูมิเปลี่ยนแปลงมาก!", ch: "温差很大！" },
+        detail: {
+          en: "The Kalahari is one of the harshest desert environments! During the day, temperatures can reach 40-45°C (104-113°F) — that's super hot! But at night it can drop to 0°C (32°F) or even below freezing. This huge temperature change from day to night is why animals burrow underground. Underground, the temperature stays cool and comfortable. Meerkats are perfectly adapted to these extreme conditions — their bodies are built to handle the heat and the cold!",
+          th: "คาลาฮารีเป็นหนึ่งในสภาพแวดล้อมทะเลทรายที่เลวร้ายที่สุด! ตอนกลางวัน อุณหภูมิอาจถึง 40-45°C (104-113°F) — ร้อนมาก! แต่ตอนกลางคืนอาจหนาวลงเหลือ 0°C (32°F) หรือต่ำกว่านี้ไปอีก การเปลี่ยนแปลงอุณหภูมิขนาดใหญ่จากกลางวันถึงกลางคืนนี้คือเหตุผลว่าทำไมสัตว์ถึงขุดตัวไปใต้ดิน ใต้ดิน อุณหภูมิจะคงที่เย็นและสบาย เมียร์แคตเข้ากับสภาพเลวร้ายเหล่านี้ได้อย่างสมบูรณ์ — ร่างกายของพวกมันสร้างมาเพื่อทนทานต่อความร้อนและความหนาว!",
+          ch: "卡拉哈里是最恶劣的沙漠环境之一！白天，温度可达40-45°C（104-113°F）——超级热！但晚上可能降到0°C（32°F）或以下。从白天到晚上的巨大温度变化就是为什么动物要挖地洞的原因。在地下，温度保持凉爽舒适。猫鼬完全适应了这些极端条件——它们的身体是为了承受炎热和寒冷而生的！"
+        }
+      },
+      {
+        id: "kalahari-animals",
+        emoji: "🦁",
+        color: "from-amber-400 to-orange-500",
+        border: "border-amber-300",
+        bg: "bg-amber-50",
+        title: { en: "Desert Animals", th: "สัตว์ทะเลทราย", ch: "沙漠动物" },
+        short: { en: "Lions, eagles and more!", th: "สิงโต นกอินทรี และอื่นๆ!", ch: "狮子、老鹰等等！" },
+        detail: {
+          en: "The Kalahari is home to many amazing animals! Lions hunt here — the Kalahari lions are special because many have no mane or very small manes. Cheetahs run fast to catch prey. Brown hyenas prowl at night. African fish eagles soar in the sky looking for food. Jackals are like wild dogs and can be dangerous to meerkats. There are also porcupines, honey badgers, and wild boars. Meerkats have learned which animals to fear and which to avoid!",
+          th: "คาลาฮารีเป็นบ้านของสัตว์น่าทึ่งมากมาย! สิงโตล่าที่นี่ — สิงโตคาลาฮารีมีพิเศษเพราะหลายตัวไม่มีแผงคอหรือมีแผงคอเล็กมาก เสือชีตาห์วิ่งเร็วเพื่อจับเหยื่อ ไฮยีน่าสีน้ำตาลเดินหลังคืน นกอินทรีปลาแอฟริกันบินสูงมองหาอาหาร หมาจิ้งจอกเหมือนสุนัขป่าและสามารถเป็นอันตรายต่อเมียร์แคตได้ นอกจากนี้ยังมีหนามหนู แ ค นเหมือนตัวป่วน และหมูป่า เมียร์แคตได้เรียนรู้ว่าต้องกลัวสัตว์ตัวไหนและหลีกเลี่ยงตัวไหน!",
+          ch: "卡拉哈里是许多奇妙动物的家园！狮子在这里捕猎——卡拉哈里狮子很特殊，因为许多狮子没有鬃毛或鬃毛很小。猎豹跑得很快来捉住猎物。棕色鬣狗在夜间活动。非洲鱼鹰在天空中翱翔寻找食物。豺狼像野狗一样，对猫鼬可能有危险。还有豪猪、蜜獾和野猪。猫鼬已经学会了哪些动物要害怕，哪些要避开！"
+        }
+      },
+      {
+        id: "kalahari-plants",
+        emoji: "🌿",
+        color: "from-green-400 to-emerald-500",
+        border: "border-green-300",
+        bg: "bg-green-50",
+        title: { en: "Desert Plants", th: "พืชทะเลทราย", ch: "沙漠植物" },
+        short: { en: "Plants that survive heat!", th: "พืชที่ทนร้อนได้!", ch: "能耐热的植物！" },
+        detail: {
+          en: "Desert plants are super tough because they need to survive on very little water! The Kalahari has dry grasses, thorny bushes and shrubs, and the famous tsamma melon. The tsamma melon is very important — animals including meerkats eat it to get water inside the fruit! Acacia trees are like umbrellas — their wide, flat tops provide shade. Devil's claw plants have spiky fruits that stick to animals' fur. The plants here are perfectly adapted to the harsh desert — their roots go very deep to find water underground.",
+          th: "พืชทะเลทรายแข็งแรงมากเพราะต้องเอาชีวิตรอดด้วยน้ำเพียงเล็กน้อย! คาลาฮารีมีหญ้าแห้ง พุ่มไม้มีหนาม และแตง tsamma ที่มีชื่อเสียง แตง tsamma มีความสำคัญมาก — สัตว์รวมทั้งเมียร์แคตกินเพื่อรับน้ำในผลไม้! ต้นอะเคเซียเหมือนร่ม — ยอดกว้างแบนของมันให้ร่มเงา พืช Devil's claw มีผลไม้หนามที่ติดกับขนสัตว์ พืชที่นี่เข้ากับทะเลทรายเลวร้าย — รากของมันเจาะลึกลงไปหาน้ำใต้ดิน",
+          ch: "沙漠植物非常强硬，因为它们需要靠很少的水生存！卡拉哈里有干草、带刺的灌木，以及著名的tsamma甜瓜。Tsamma甜瓜很重要——包括猫鼬在内的动物吃它来获取水分！金合欢树像雨伞——它们宽阔平坦的顶部提供阴凉。魔鬼爪植物有尖刺的果实会粘在动物的毛皮上。这里的植物完全适应了恶劣的沙漠——它们的根很深很长，能够找到地下的水。"
+        }
+      },
+      {
+        id: "kalahari-water",
+        emoji: "💧",
+        color: "from-blue-400 to-cyan-500",
+        border: "border-blue-300",
+        bg: "bg-blue-50",
+        title: { en: "Finding Water", th: "การหาน้ำ", ch: "寻找水" },
+        short: { en: "Water is precious here!", th: "น้ำมีค่าที่นี่!", ch: "水很珍贵！" },
+        detail: {
+          en: "Water is the most precious thing in the desert! Meerkats rarely drink free-standing water. Instead, they get water from their food — insects contain about 80% water! In the dry season, tsamma melons are lifesavers because they store water inside. Meerkats also dig for roots and tubers that contain moisture. The San people know where hidden water sources are — they can find water in roots and in the earth. Scientists are amazed at how meerkats know exactly where to dig to find these water-rich foods!",
+          th: "น้ำเป็นสิ่งมีค่าที่สุดในทะเลทราย! เมียร์แคตแทบไม่เคยดื่มน้ำที่ยืนนิ่ง แต่ได้รับน้ำจากอาหารของพวกมัน — แมลงประกอบด้วยน้ำประมาณ 80%! ในฤดูแล้ง แตง tsamma เป็นผู้ช่วยชีวิต เพราะเก็บน้ำไว้ข้างใน เมียร์แคตยังขุดหาราก และมันที่มีความชื้น ชาวซานรู้ว่าแหล่งน้ำที่ซ่อนอยู่อยู่ที่ไหน — พวกเขาสามารถหาน้ำในรากและในดิน! นักวิทยาศาสตร์ประหลาดใจว่าเมียร์แคตรู้ว่าต้องขุดที่ไหนแน่ชัดเพื่อหาอาหารที่มีน้ำมากเหล่านี้!",
+          ch: "水是沙漠中最珍贵的东西！猫鼬很少喝静水。相反，它们从食物中获取水——昆虫含有约80%的水！在旱季，tsamma甜瓜是救星，因为它们在内部储存水。猫鼬还挖根和块茎，这些含有水分。桑人知道隐藏的水源在哪里——他们能在根和土里找到水。科学家对猫鼬如何确切知道在哪里挖来找到这些富水食物感到惊讶！"
+        }
+      }
+    ],
+    facts: [
+      {
+        id: "fact-sand",
+        emoji: "🟤",
+        title: { en: "Red Sand", th: "ทรายแดง", ch: "红色沙子" },
+        text: { en: "The Kalahari's sand is red because it has iron oxide in it — like rust! This gives the desert its special colour.", th: "ทรายของคาลาฮารีเป็นสีแดงเพราะมีแร่ธาตุเหล็กออกไซด์ — เหมือนสนิม! นี่ให้ทะเลทรายมีสีพิเศษ", ch: "卡拉哈里的沙子是红色的，因为含有氧化铁——像铁锈！这给沙漠赋予了特殊的颜色。" }
+      },
+      {
+        id: "fact-rain",
+        emoji: "🌧️",
+        title: { en: "Some Rain Falls", th: "ฝนตกบ้าง", ch: "有些雨" },
+        text: { en: "The Kalahari gets about 250-500mm of rain per year — that's not as dry as the Sahara! When rains come, grasses grow and animals thrive.", th: "คาลาฮารีได้รับฝนประมาณ 250-500 มม. ต่อปี — ไม่แห้งแล้งเหมือนสะหารา! เมื่อฝนมา หญ้างอกและสัตว์เจริญรุ่งเรือง", ch: "卡拉哈里每年下250-500毫米的雨——不像撒哈拉那么干！当雨来临时，草会生长，动物会繁荣。" }
+      },
+      {
+        id: "fact-bushmen",
+        emoji: "🏹",
+        title: { en: "San People", th: "ชาวซาน", ch: "桑人" },
+        text: { en: "The San people have lived in the Kalahari for over 20,000 years! They know the desert better than anyone — which plants have water, where animals hide, the best hunting times.", th: "ชาวซานอาศัยอยู่ในคาลาฮารีเป็นเวลากว่า 20,000 ปี! พวกเขารู้ทะเลทรายดีกว่าใครๆ — พืชไหนมีน้ำ สัตว์ซ่อนตัวที่ไหน เวลาล่าที่ดีที่สุด", ch: "桑人在卡拉哈里生活了20,000多年！他们比任何人都更了解沙漠——哪些植物有水，动物躲在哪里，最好的狩猎时间。" }
+      },
+      {
+        id: "fact-night",
+        emoji: "🌙",
+        title: { en: "Active at Night", th: "ออกมากิจกรรมตอนกลางคืน", ch: "夜间活动" },
+        text: { en: "Many desert animals are nocturnal (awake at night) because it's cooler! Meerkats sleep during the hottest part of the day and are most active early morning and late afternoon.", th: "สัตว์ทะเลทรายหลายตัวมีวิถีกลางคืน (ตื่นตอนกลางคืน) เพราะเย็นกว่า! เมียร์แคตหลับตอนที่ร้อนที่สุดของวันและออกมาทำกิจกรรมมากที่สุดในตอนเช้าเนิ่นๆ และในตอนเย็นช่วงท้าย", ch: "许多沙漠动物是夜行性的（晚上活跃），因为更凉爽！猫鼬在最热的时候睡觉，在早上和傍晚最活跃。" }
+      }
+    ]
+  },
+  madagascar: {
+    emoji: "🌳",
+    title: { en: "Madagascar's Forests", th: "ป่ามาดากัสการ์", ch: "马达加斯加森林" },
+    intro: {
+      en: "Madagascar is a magical island off the coast of Africa with enchanting rainforests full of animals found nowhere else on Earth! In 'Meerkat Mail', Sunny dreams of visiting places like this and seeing the wonderful wildlife.",
+      th: "มาดากัสการ์เป็นเกาะมหัศจรรย์นอกชายฝั่งแอฟริกา มีป่าฝนน่าเสน่ห์เต็มไปด้วยสัตว์ที่ไม่พบที่อื่นบนโลก! ใน 'Meerkat Mail' ซันนี่ฝันอยากไปเยี่ยมชมสถานที่แบบนี้และเห็นสัตว์ป่าที่ยอดเยี่ยม",
+      ch: "马达加斯加是非洲沿岸的一个神奇岛屿，拥有充满魔力的热带雨林，里面有地球上其他地方找不到的动物！在《猫鼬邮件》中，Sunny梦想着去这样的地方游历，看到了不可思议的野生动物。"
+    },
+    cards: [
+      {
+        id: "madagascar-lemurs",
+        emoji: "🐒",
+        color: "from-emerald-400 to-teal-500",
+        border: "border-emerald-300",
+        bg: "bg-emerald-50",
+        title: { en: "Lemurs!", th: "ลีเมอร์!", ch: "狐猴！" },
+        short: { en: "Special animals only here!", th: "สัตว์พิเศษมีแค่ที่นี่!", ch: "这里独有的特殊动物！" },
+        detail: {
+          en: "Lemurs only live in Madagascar! There are over 100 types. The ring-tailed lemur has a famous black-and-white striped tail and spends time both in trees and on the ground. Some lemurs are tiny (the size of your thumb!), while others are as big as a child. They jump through trees with amazing grace and often sit in groups sunbathing in the morning, just like meerkats! Lemurs make loud calls to talk to each other and live in family groups.",
+          th: "ลีเมอร์อาศัยอยู่เฉพาะในมาดากัสการ์! มีมากกว่า 100 ชนิด ลีเมอร์หางแหวนมีหางลายดำขาวที่มีชื่อเสียงและใช้เวลาทั้งในต้นไม้และบนพื้นดิน ลีเมอร์บางตัวมีขนาดเล็กจิ๋ว (ขนาดนิ้ว!) ในขณะที่ตัวอื่นมีขนาดใหญ่เท่าเด็ก พวกมันกระโดดข้ามต้นไม้ด้วยความสง่างามอย่างน่าตะหลาดใจและมักนั่งเป็นกลุ่มอาบแดดตอนเช้า เหมือนเมียร์แคต! ลีเมอร์ส่งเสียงดังเพื่อพูดคุยกันและอาศัยอยู่ในครอบครัว",
+          ch: "狐猴只生活在马达加斯加！有100多种。环尾狐猴有著名的黑白条纹尾巴，在树上和地面都能活动。有些狐猴很小（拇指大小！），而有些像孩子一样大。它们优雅地在树间跳跃，早上经常成群晒太阳，就像猫鼬一样！狐猴发出响亮的叫声互相交流，以家庭为单位生活。"
+        }
+      },
+      {
+        id: "madagascar-baobab",
+        emoji: "🌳",
+        color: "from-green-500 to-lime-500",
+        border: "border-green-300",
+        bg: "bg-green-50",
+        title: { en: "Baobab Trees", th: "ต้นเบาบับ", ch: "猴面包树" },
+        short: { en: "Upside-down trees!", th: "ต้นไม้กลับหัว!", ch: "倒挂的树！" },
+        detail: {
+          en: "Baobab trees look like they have their roots in the air — their massive trunks are much bigger than their branches! Some baobabs are over 1,000 years old — older than your great-great-great grandparents! They are sometimes called 'trees of life' because they store water inside their thick trunks so they survive the dry season. Animals, birds, and people all depend on them. An elephant can eat an entire baobab trunk to get at the water inside! The leaves, seeds, and fruit are food for many animals.",
+          th: "ต้นเบาบับดูเหมือนมีรากอยู่ในอากาศ — ลำต้นมหึมาของพวกมันใหญ่กว่ากิ่งก้านมาก! เบาบับบางต้นอายุมากกว่า 1,000 ปี — เก่ากว่าปู่ย่าตา ของคุณมาก! บางครั้งมีชื่อว่า 'ต้นไม้แห่งชีวิต' เพราะเก็บน้ำไว้ในลำต้นหนา เพื่อเอาชีวิตรอดในฤดูแล้ง สัตว์ นก และคนเหล่านี้ทั้งหมดพึ่งพาพวกมัน ช้างสามารถกินลำต้นเบาบับทั้งต้นเพื่อได้น้ำข้างใน! ใบ เมล็ด และผลไม้เป็นอาหารของสัตว์หลายตัว",
+          ch: "猴面包树看起来像根在天上——它们的巨大树干比树枝大得多！有些猴面包树已经超过1000岁了——比你的曾曾曾祖父母还老！它们有时被称为'生命之树'，因为它们在粗壮的树干里储存水，以度过旱季。动物、鸟类和人类都依赖它们。大象可以吃掉整个猴面包树树干来获取里面的水！叶子、种子和水果是许多动物的食物。"
+        }
+      },
+      {
+        id: "madagascar-chameleon",
+        emoji: "🦎",
+        color: "from-teal-400 to-cyan-500",
+        border: "border-teal-300",
+        bg: "bg-teal-50",
+        title: { en: "Chameleons", th: "กิ้งก่าคาเมเลียน", ch: "变色龙" },
+        short: { en: "Colour-changing lizards!", th: "กิ้งก่าเปลี่ยนสี!", ch: "会变色的蜥蜴！" },
+        detail: {
+          en: "Madagascar has about half of all chameleon species in the world! These amazing lizards can change colour in seconds — but not just to hide. They change colour to show their mood (angry, scared, happy, cold) and to attract mates. They have eyes that can look in two completely different directions at the same time — one eye looking forward and one looking backwards! Their tails curl and uncurl, and they walk slowly and carefully. Some chameleons are no bigger than your fingernail, while others are as long as a cat!",
+          th: "มาดากัสการ์มีกิ้งก่าคาเมเลียนประมาณครึ่งหนึ่งของโลก! สัตว์งามไม่ธรรมชาติเหล่านี้สามารถเปลี่ยนสีในเวลาไม่กี่วินาที — แต่ไม่เพียงเพื่อซ่อน พวกมันเปลี่ยนสีเพื่อแสดงอารมณ์ (โกรธ กลัว ดีใจ หนาว) และเพื่อดึงดูดคู่ การสืบพันธุ์ ตาของพวกมันสามารถมองในสองทิศทางแยกต่างหากในเวลาเดียวกัน — ตาข้างหนึ่งมองไปข้างหน้าและตาข้างหนึ่งมองไปข้างหลัง! หางของพวกมันโค้งงอและคลี่ออก และพวกมันเดินช้าและระมัดระวัง กิ้งก่าคาเมเลียนบางตัวเล็กไม่เกินเล็บนิ้วมือ ในขณะที่กิ้งก่าตัวอื่นยาวเท่าแมว!",
+          ch: "马达加斯加拥有世界上大约一半的变色龙种类！这些奇异的蜥蜴可以在几秒钟内改变颜色——但不仅仅是为了隐藏。它们改变颜色是为了表达情绪（愤怒、害怕、开心、寒冷）并吸引配偶。它们的眼睛可以同时朝两个完全不同的方向看——一只眼睛向前看，一只向后看！它们的尾巴弯曲和伸展，它们缓慢而谨慎地行走。有些变色龙小到比你的指甲还小，而其他的则和猫一样长！"
+        }
+      },
+      {
+        id: "madagascar-rainforest",
+        emoji: "🌧️",
+        color: "from-cyan-400 to-blue-500",
+        border: "border-cyan-300",
+        bg: "bg-cyan-50",
+        title: { en: "Rainforests", th: "ป่าฝน", ch: "热带雨林" },
+        short: { en: "Green and wet forests!", th: "ป่าเขียวชื้น!", ch: "绿色潮湿的森林！" },
+        detail: {
+          en: "Madagascar's eastern rainforests are thick, wet, and full of life! It rains almost every day there. The rainforests are layered — the top is the canopy where birds and flying animals live, then the middle layer where many animals hide, and the forest floor where fallen leaves and small creatures thrive. Many plants and animals in these forests are found nowhere else in the world. Scientists discover new species every year! Over 80% of Madagascar's animals live nowhere else but there. The rainforests are like a treasure chest of life — but they are shrinking because people cut down trees.",
+          th: "ป่าฝนทางตะวันออกของมาดากัสการ์หนาแน่น ชื้น และเต็มไปด้วยชีวิต! ฝนตกเกือบทุกวันที่นั่น ป่าฝนมีชั้นๆ — ชั้นบนสุดคือ canopy ที่นกและสัตว์บินอาศัยอยู่ จากนั้นชั้นกลางที่สัตว์หลายตัวซ่อนตัว และพื้นป่าที่ใบไม้ตกและสัตว์เล็กๆ เจริญ พืชและสัตว์หลายชนิดในป่าเหล่านี้ไม่พบที่อื่น นักวิทยาศาสตร์ค้นพบสายพันธุ์ใหม่ทุกปี! สัตว์มากกว่า 80% ของมาดากัสการ์อาศัยอยู่ที่นี่เท่านั้น ป่าฝนเหมือนหีบขุมทรัพย์ของชีวิต — แต่ป่าหดตัวเพราะคนตัดไม้",
+          ch: "马达加斯加东部的热带雨林茂密、潮湿，充满生机！那里几乎每天都下雨。热带雨林是分层的——顶部是鸟类和飞行动物生活的冠层，然后是许多动物躲藏的中间层，以及落叶和小生物繁衍生息的林地。这些森林中的许多动植物在地球上其他地方找不到。科学家每年都会发现新物种！超过80%的马达加斯加动物只生活在那里。热带雨林就像一个生命的宝库——但由于人们砍伐树木，它正在缩小。"
+        }
+      },
+      {
+        id: "madagascar-frog",
+        emoji: "🐸",
+        color: "from-yellow-400 to-orange-500",
+        border: "border-yellow-300",
+        bg: "bg-yellow-50",
+        title: { en: "Amazing Frogs", th: "개구리ที่ยอดเยี่ยม", ch: "神奇的青蛙" },
+        short: { en: "Bright colours everywhere!", th: "สีสันสดใสทุกที่!", ch: "到处都是鲜艳的颜色！" },
+        detail: {
+          en: "Madagascar has the most amazing, colourful frogs! Tomato frogs are bright red like tomatoes. Poison dart frogs are tiny but brilliantly coloured in blue, yellow, or red — their bright colours warn predators 'I'm poisonous, don't eat me!' Some frogs are the size of your pinky nail, while others are bigger than your hand. Frogs make loud croaking sounds at night — the rainforest at night sounds like a chorus of thousands of frogs! Frogs are important because they eat insects. When frogs disappear, insect problems increase.",
+          th: "มาดากัสการ์มีกบที่ยอดเยี่ยมและมีสีสดใสที่สุด! กบมะเขือเดือยสีแดงสดใสเหมือนมะเขือเดือย กบพิษสีม่วงเป็นตัวเล็กแต่มีสีสันสดใสในสีฟ้า เหลือง หรือแดง — สีสันของพวกมันเตือนนักล่า 'ฉันเป็นพิษ อย่ากิน!' กบบางตัวมีขนาดเล็กกว่านิ้วก้อย ในขณะที่กบตัวอื่นใหญ่กว่ามือ กบส่งเสียงอ้อยอึ่งดังตอนกลางคืน — ป่าฝนตอนกลางคืนฟังดูเหมือนเสียงประสานของกบหลายพันตัว! กบมีความสำคัญเพราะกินแมลง เมื่อกบหายไป ปัญหาแมลงจะเพิ่มขึ้น",
+          ch: "马达加斯加有最令人惊艳、色彩鲜艳的青蛙！番茄蛙是像番茄一样的鲜红色。箭毒蛙很小，但颜色鲜艳，呈蓝色、黄色或红色——它们鲜艳的颜色警告捕食者'我有毒，别吃我！'有些青蛙和你的小指甲一样大小，而其他的比你的手还大。青蛙在夜间发出响亮的呱呱叫声——夜晚的热带雨林听起来像成千上万只青蛙的合唱！青蛙很重要，因为它们吃昆虫。当青蛙消失时，昆虫问题就会增加。"
+        }
+      },
+      {
+        id: "madagascar-island",
+        emoji: "🏝️",
+        color: "from-indigo-400 to-purple-500",
+        border: "border-indigo-300",
+        bg: "bg-indigo-50",
+        title: { en: "Island Mystery", th: "ลึกลับของเกาะ", ch: "岛屿之谜" },
+        short: { en: "Why so unique?", th: "ทำไมถึงพิเศษขนาดนี้?", ch: "为什么这么独特？" },
+        detail: {
+          en: "Madagascar split away from Africa about 88 million years ago! That's before dinosaurs went extinct! Being isolated for so long, the animals and plants evolved differently — they had to adapt to survive without competitors from other continents. This is why about 90% of Madagascar's animals are found NOWHERE else on Earth. The island is like a living time machine showing how evolution works. If an animal or plant from Africa or Asia arrives on Madagascar, it can change the balance of nature because the island's creatures have no experience with new predators or competitors.",
+          th: "มาดากัสการ์แยกจากแอฟริกาเมื่อประมาณ 88 ล้านปีที่แล้ว! นั่นคือก่อนไดโนเสาร์หายไป! การแยกตัวเป็นเวลานานมาก สัตว์และพืชวิวัฒนาต่างกัน — พวกมันต้องปรับตัวเพื่อเอาชีวิตรอดโดยไม่มีการแข่งขันจากทวีปอื่น นี่คือเหตุผลว่าทำไม 90% ของสัตว์มาดากัสการ์จึงไม่พบที่อื่นบนโลก เกาะเหมือนเครื่องเดินทางเวลาแบบมีชีวิตที่แสดงให้เห็นว่าวิวัฒนาการทำงานอย่างไร ถ้าสัตว์หรือพืชจากแอฟริกาหรือเอเชียมาถึงมาดากัสการ์ มันสามารถเปลี่ยนสมดุลของธรรมชาติได้เพราะสัตว์ของเกาะไม่มีประสบการณ์กับนักล่าหรือคู่แข่งใหม่",
+          ch: "马达加斯加在大约8800万年前从非洲分离！那是在恐龙灭绝之前！长期隔离，动物和植物进化不同——它们必须适应环境才能在没有来自其他大陆的竞争对手的情况下生存。这就是为什么约90%的马达加斯加动物在地球上其他任何地方都找不到的原因。这个岛就像一台活生生的时间机器，展示进化是如何进行的。如果来自非洲或亚洲的动物或植物到达马达加斯加，它可能会改变自然界的平衡，因为岛上的生物对新的捕食者或竞争者没有经验。"
+        }
+      }
+    ],
+    facts: [
+      {
+        id: "fact-island",
+        emoji: "🌏",
+        title: { en: "Split From Africa", th: "แยกจากแอฟริกา", ch: "从非洲分离" },
+        text: { en: "Madagascar separated from Africa 88 million years ago! This made it a 'lost world' where unique animals could evolve.", th: "มาดากัสการ์แยกจากแอฟริกา 88 ล้านปีที่แล้ว! สิ่งนี้ทำให้เป็น 'โลกที่สูญหาย' ที่สัตว์พิเศษสามารถวิวัฒนาได้", ch: "马达加斯加在8800万年前从非洲分离！这使它成为一个'失落的世界'，独特的动物可以在其中进化。" }
+      },
+      {
+        id: "fact-fossa",
+        emoji: "🐾",
+        title: { en: "The Fossa", th: "ฟอสซา", ch: "马岛獴" },
+        text: { en: "The fossa is Madagascar's top predator — it looks like a mix between a cat and a mongoose! It hunts lemurs and other animals. Even though lemurs are fast, fossas are faster and can leap through trees!", th: "ฟอสซาเป็นนักล่าอันดับหนึ่งของมาดากัสการ์ — ดูเหมือนลูกผสมระหว่างแมวกับพังพอน! มันล่าลีเมอร์และสัตว์อื่นๆ แม้ว่าลีเมอร์จะเร็ว แต่ฟอสซาเร็วกว่าและสามารถกระโดดข้ามต้นไม้ได้!", ch: "马岛獴是马达加斯加的顶级捕食者——看起来像猫和猫鼬的混合体！它捕猎狐猴和其他动物。虽然狐猴很快，但马岛獴更快，可以在树间跳跃！" }
+      },
+      {
+        id: "fact-vanilla",
+        emoji: "🍦",
+        title: { en: "Vanilla Capital", th: "เมืองวานิลลา", ch: "香草之都" },
+        text: { en: "Most of the world's vanilla comes from Madagascar! Vanilla plants need special care, and Madagascar's climate is perfect. Your ice cream might taste of Madagascar vanilla!", th: "วานิลลาส่วนใหญ่ของโลกมาจากมาดากัสการ์! พืชวานิลลาต้องการดูแลพิเศษ และสภาพอากาศของมาดากัสการ์นั้นสมบูรณ์แบบ ไอศกรีมของคุณอาจมีรสชาติของวานิลลามาดากัสการ์!", ch: "世界上大部分香草来自马达加斯加！香草植物需要特殊照料，马达加斯加的气候是完美的。你的冰淇淋可能尝起来像马达加斯加的香草！" }
+      },
+      {
+        id: "fact-species",
+        emoji: "🔍",
+        title: { en: "Discovery Zone", th: "โซนค้นพบ", ch: "发现区" },
+        text: { en: "Scientists discover a new animal or plant species in Madagascar almost every week! The rainforests still hold many secrets waiting to be found.", th: "นักวิทยาศาสตร์ค้นพบสัตว์หรือพืชชนิดใหม่ในมาดากัสการ์เกือบทุกสัปดาห์! ป่าฝนยังคงเก็บความลับมากมายที่รอการค้นพบ", ch: "科学家几乎每周都在马达加斯加发现新的动物或植物物种！热带雨林仍然隐藏着许多等待被发现的秘密。" }
+      }
+    ]
+  }
+};
+
+// ── Language System ──
+function switchLanguage(lang) {
+  currentLanguage = lang;
+  // Update buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.remove('lang-btn-active');
+    if (btn.dataset.lang === lang) btn.classList.add('lang-btn-active');
+  });
+  // Update all translatable elements
+  document.querySelectorAll('[data-en]').forEach(el => {
+    const text = el.getAttribute(`data-${lang}`);
+    if (text) el.textContent = text;
+  });
+  // Re-render topic content
+  renderTopic();
+}
+
+// ── Topic System ──
+function switchTopic(topic) {
+  currentTopic = topic;
+  document.querySelectorAll('.topic-btn').forEach(btn => {
+    btn.classList.remove('topic-btn-active');
+    if (btn.dataset.topic === topic) btn.classList.add('topic-btn-active');
+  });
+  renderTopic();
+}
+
+function renderTopic() {
+  const data = topicData[currentTopic];
+  const lang = currentLanguage;
+  const area = document.getElementById('content-area');
+
+  area.innerHTML = `
+    <!-- Topic Header -->
+    <div class="text-center mb-6 animate-pop-in">
+      <span class="text-5xl block mb-2">${data.emoji}</span>
+      <h2 class="font-heading text-3xl font-bold text-gray-800 mb-2">${data.title[lang]}</h2>
+      <p class="text-gray-600 text-lg max-w-xl mx-auto leading-relaxed">${data.intro[lang]}</p>
+    </div>
+
+    <!-- Expandable Cards -->
+    <div class="space-y-3 mb-8">
+      ${data.cards.map((card, i) => `
+        <div class="animate-slide-up"
+             style="animation-delay: ${i * 0.1}s; opacity: 0;">
+          <button class="btn-bounce w-full ${card.bg} border-2 ${card.border} rounded-2xl p-5 shadow-md hover:shadow-lg transition-all text-left"
+                  onclick="toggleCard('${card.id}')">
+            <div class="flex items-center gap-3">
+              <span class="text-4xl animate-bounce-soft flex-shrink-0" style="animation-delay: ${i * 0.2}s;">${card.emoji}</span>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-heading text-xl font-bold text-gray-800 mb-1">${card.title[lang]}</h3>
+                <p class="text-gray-600 text-sm leading-relaxed">${card.short[lang]}</p>
+              </div>
+              <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r ${card.color} flex items-center justify-center shadow-sm transition-transform">
+                <i data-lucide="chevron-down" class="card-chevron w-4 h-4 text-white"></i>
+              </div>
+            </div>
+          </button>
+          <div class="card-content-${card.id} max-h-0 overflow-hidden transition-all duration-300">
+            <div class="p-5 pt-0">
+              <div class="bg-white rounded-xl p-4 text-gray-700 leading-relaxed">
+                ${card.detail[lang]}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Fun Facts Box -->
+    <button class="animate-slide-up w-full btn-bounce bg-gradient-to-br from-purple-50 to-pink-50 border-3 border-purple-200 rounded-3xl p-7 shadow-lg hover:shadow-xl transition-all"
+            onclick="toggleFactsBox()"
+            style="animation-delay: 0.5s; opacity: 0;">
+      <div class="flex items-center gap-2 justify-center">
+        <span class="text-3xl animate-sparkle">⭐</span>
+        <h3 class="font-heading text-2xl font-bold text-purple-800"
+            data-en="Fun Facts!" data-th="เกร็ดน่ารู้!" data-ch="有趣的事实！">${lang === 'en' ? 'Fun Facts!' : lang === 'th' ? 'เกร็ดน่ารู้!' : '有趣的事实！'}</h3>
+        <span class="text-3xl animate-sparkle" style="animation-delay: 0.5s;">⭐</span>
+        <i data-lucide="chevron-down" id="facts-chevron" class="w-6 h-6 text-purple-800 transition-transform" style="margin-left: 8px;"></i>
+      </div>
+    </button>
+
+    <!-- Fun Facts Content (Expandable) -->
+    <div id="facts-content" class="animate-slide-up mt-4 rounded-2xl bg-purple-50 border-3 border-purple-200 overflow-hidden max-h-0 transition-all duration-300"
+         style="animation-delay: 0.6s; opacity: 0;">
+      <div class="p-6 space-y-4">
+        ${data.facts.map((fact) => `
+          <div class="p-4 rounded-xl bg-white border-2 border-purple-100">
+            <div class="flex items-start gap-3">
+              <span class="text-3xl flex-shrink-0">${fact.emoji}</span>
+              <div class="min-w-0 flex-1">
+                <h4 class="font-heading font-bold text-purple-800 mb-1">${fact.title[lang]}</h4>
+                <p class="text-gray-700 text-sm leading-relaxed">${fact.text[lang]}</p>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Re-init icons
+  lucide.createIcons();
+}
+
+// ── Modal System ──
+function openModal(cardId) {
+  const data = topicData[currentTopic];
+  const lang = currentLanguage;
+  const card = data.cards.find(c => c.id === cardId);
+  if (!card) return;
+
+  currentModalAudioId = cardId;
+  document.getElementById('modal-emoji').textContent = card.emoji;
+  document.getElementById('modal-title').textContent = card.title[lang];
+  document.getElementById('modal-body').innerHTML = `
+    <p class="text-base leading-relaxed">${card.detail[lang]}</p>
+  `;
+
+  showModal();
+  playAudio(cardId);
+}
+
+function openFactModal(factId) {
+  const data = topicData[currentTopic];
+  const lang = currentLanguage;
+  const fact = data.facts.find(f => f.id === factId);
+  if (!fact) return;
+
+  currentModalAudioId = factId;
+  document.getElementById('modal-emoji').textContent = fact.emoji;
+  document.getElementById('modal-title').textContent = fact.title[lang];
+  document.getElementById('modal-body').innerHTML = `
+    <p class="text-base leading-relaxed">${fact.text[lang]}</p>
+  `;
+
+  showModal();
+  playAudio(factId);
+}
+
+function toggleCard(cardId) {
+  const content = document.querySelector(`.card-content-${cardId}`);
+  const chevron = content.parentElement.querySelector('.card-chevron');
+  const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+  if (isExpanded) {
+    content.style.maxHeight = '0px';
+    chevron.style.transform = 'rotate(0deg)';
+  } else {
+    content.style.maxHeight = content.scrollHeight + 'px';
+    chevron.style.transform = 'rotate(180deg)';
+    playAudio(cardId);
+  }
+}
+
+function toggleFactsBox() {
+  const factsContent = document.getElementById('facts-content');
+  const chevron = document.getElementById('facts-chevron');
+  const isExpanded = factsContent.style.maxHeight && factsContent.style.maxHeight !== '0px';
+
+  if (isExpanded) {
+    factsContent.style.maxHeight = '0px';
+    chevron.style.transform = 'rotate(0deg)';
+  } else {
+    factsContent.style.maxHeight = factsContent.scrollHeight + 'px';
+    chevron.style.transform = 'rotate(180deg)';
+  }
+}
+
+function showModal() {
+  const overlay = document.getElementById('modal-overlay');
+  const content = document.getElementById('modal-content');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+    content.style.transform = 'scale(1)';
+    content.style.opacity = '1';
+  });
+  // Update listen button text
+  const listenSpan = document.querySelector('#modal-audio-btn span[data-en]');
+  if (listenSpan) {
+    listenSpan.textContent = currentLanguage === 'en' ? 'Listen' : currentLanguage === 'th' ? 'ฟัง' : '听一听';
+  }
+  lucide.createIcons();
+}
+
+function closeModal() {
+  const overlay = document.getElementById('modal-overlay');
+  const content = document.getElementById('modal-content');
+  overlay.style.opacity = '0';
+  content.style.transform = 'scale(0.9)';
+  content.style.opacity = '0';
+  setTimeout(() => {
+    overlay.style.display = 'none';
+  }, 300);
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    document.querySelectorAll('.audio-ripple').forEach(el => el.classList.remove('playing'));
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Element SDK ──
+const defaultConfig = {
+  site_title: "Meerkat Explorer",
+  welcome_message: "Explore the amazing world of meerkats and their homes!",
+  background_color: "#fffbeb",
+  surface_color: "#ffffff",
+  text_color: "#78350f",
+  primary_action_color: "#f59e0b",
+  secondary_action_color: "#10b981",
+  font_family: "Fredoka",
+  font_size: 16
+};
+
+function applyConfig(config) {
+  const title = config.site_title || defaultConfig.site_title;
+  const welcome = config.welcome_message || defaultConfig.welcome_message;
+  const bg = config.background_color || defaultConfig.background_color;
+  const surface = config.surface_color || defaultConfig.surface_color;
+  const textCol = config.text_color || defaultConfig.text_color;
+  const primary = config.primary_action_color || defaultConfig.primary_action_color;
+  const secondary = config.secondary_action_color || defaultConfig.secondary_action_color;
+  const font = config.font_family || defaultConfig.font_family;
+  const fontSize = config.font_size || defaultConfig.font_size;
+
+  // Title
+  const titleEl = document.getElementById('site-title');
+  if (titleEl) titleEl.textContent = title;
+
+  // Welcome
+  const welcomeEl = document.getElementById('welcome-msg');
+  if (welcomeEl && currentLanguage === 'en') welcomeEl.textContent = welcome;
+
+  // Background
+  const app = document.getElementById('app');
+  if (app) app.style.background = `linear-gradient(180deg, ${bg} 0%, ${bg}ee 40%, ${primary}33 100%)`;
+
+  // Text color
+  document.querySelectorAll('h1, h2').forEach(el => el.style.color = textCol);
+
+  // Font
+  document.querySelectorAll('.font-heading, h1, h2, h3, button').forEach(el => {
+    el.style.fontFamily = `${font}, Fredoka, cursive`;
+  });
+  document.querySelectorAll('p, span').forEach(el => {
+    el.style.fontFamily = `${font}, Quicksand, sans-serif`;
+  });
+
+  // Font size
+  const base = fontSize;
+  document.querySelectorAll('p').forEach(el => el.style.fontSize = `${base}px`);
+  const h1 = document.querySelector('h1');
+  if (h1) h1.style.fontSize = `${base * 2.5}px`;
+}
+
+if (window.elementSdk) {
+  window.elementSdk.init({
+    defaultConfig,
+    onConfigChange: async (config) => {
+      applyConfig(config);
+    },
+    mapToCapabilities: (config) => ({
+      recolorables: [
+        { get: () => config.background_color || defaultConfig.background_color, set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+        { get: () => config.surface_color || defaultConfig.surface_color, set: (v) => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+        { get: () => config.text_color || defaultConfig.text_color, set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+        { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: (v) => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+        { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: (v) => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } }
+      ],
+      borderables: [],
+      fontEditable: {
+        get: () => config.font_family || defaultConfig.font_family,
+        set: (v) => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+      },
+      fontSizeable: {
+        get: () => config.font_size || defaultConfig.font_size,
+        set: (v) => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+      }
+    }),
+    mapToEditPanelValues: (config) => new Map([
+      ["site_title", config.site_title || defaultConfig.site_title],
+      ["welcome_message", config.welcome_message || defaultConfig.welcome_message]
+    ])
+  });
+}
+
+// ── Init ──
+renderTopic();
+lucide.createIcons();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e55ae39a30799a9',t:'MTc3NTAyNjQ0Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
