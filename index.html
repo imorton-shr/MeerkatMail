@@ -198,7 +198,7 @@ function playAudio(id) {
     currentAudio.currentTime = 0;
     document.querySelectorAll('.audio-ripple').forEach(el => el.classList.remove('playing'));
   }
-  const file = `audio/${id}-${currentLanguage}.mp3`;
+  const file = `./audio/${id}-${currentLanguage}.mp3`;
   currentAudio = new Audio(file);
   const btn = document.getElementById('modal-audio-btn');
   if (btn) btn.classList.add('playing');
