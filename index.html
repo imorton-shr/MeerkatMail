@@ -754,25 +754,22 @@ function toggleCard(cardId) {
     playAudio(cardId);
   }
 }
-
-function toggleCard(cardId) {
-  const content = document.querySelector(`.card-content-${cardId}`);
-  const chevron = content.parentElement.querySelector('.card-chevron');
-  const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+   function toggleFactsBox() {
+  const factsContent = document.getElementById('facts-content');
+  const chevron = document.getElementById('facts-chevron');
+  const isExpanded = factsContent.style.maxHeight && factsContent.style.maxHeight !== '0px';
 
   if (isExpanded) {
-    content.style.maxHeight = '0px';
+    factsContent.style.maxHeight = '0px';
     chevron.style.transform = 'rotate(0deg)';
-
-    // 🔥 stop audio when closing
     stopAudio();
-
   } else {
-    content.style.maxHeight = content.scrollHeight + 'px';
+    factsContent.style.maxHeight = factsContent.scrollHeight + 'px';
     chevron.style.transform = 'rotate(180deg)';
-    playAudio(cardId);
+    playAudio(`facts-${currentTopic}`);
   }
 }
+
 function showModal() {
   const overlay = document.getElementById('modal-overlay');
   const content = document.getElementById('modal-content');
