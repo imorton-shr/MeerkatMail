@@ -192,12 +192,25 @@ let currentAudio = null;
 let currentModalAudioId = null;
 
 // ── Audio System ──
-function playAudio(id) {
+   function stopAudio() {
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.currentTime = 0;
-    document.querySelectorAll('.audio-ripple').forEach(el => el.classList.remove('playing'));
+
+    // force full stop
+    currentAudio.src = "";
+    currentAudio.load();
+
+    currentAudio = null;
   }
+
+  document.querySelectorAll('.audio-ripple').forEach(el => {
+    el.classList.remove('playing');
+  });
+}
+function playAudio(id) {
+  if (currentAudio) {
+    stopAudio();}
   const file = `./audio/${id}-${currentLanguage}.mp3`;
   currentAudio = new Audio(file);
   const btn = document.getElementById('modal-audio-btn');
@@ -729,41 +742,37 @@ function toggleCard(cardId) {
   const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
 
   if (isExpanded) {
-  content.style.maxHeight = '0px';
-  chevron.style.transform = 'rotate(0deg)';
+    content.style.maxHeight = '0px';
+    chevron.style.transform = 'rotate(0deg)';
 
-  // 🔥 stop audio when closing
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    document.querySelectorAll('.audio-ripple').forEach(el => el.classList.remove('playing'));
-  }
-} else {
+    // 🔥 stop audio when closing
+    stopAudio();
+
+  } else {
     content.style.maxHeight = content.scrollHeight + 'px';
     chevron.style.transform = 'rotate(180deg)';
     playAudio(cardId);
   }
 }
 
-function toggleFactsBox() {
-  const factsContent = document.getElementById('facts-content');
-  const chevron = document.getElementById('facts-chevron');
-  const isExpanded = factsContent.style.maxHeight && factsContent.style.maxHeight !== '0px';
+function toggleCard(cardId) {
+  const content = document.querySelector(`.card-content-${cardId}`);
+  const chevron = content.parentElement.querySelector('.card-chevron');
+  const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
 
   if (isExpanded) {
-    factsContent.style.maxHeight = '0px';
+    content.style.maxHeight = '0px';
     chevron.style.transform = 'rotate(0deg)';
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-    }
+
+    // 🔥 stop audio when closing
+    stopAudio();
+
   } else {
-    factsContent.style.maxHeight = factsContent.scrollHeight + 'px';
+    content.style.maxHeight = content.scrollHeight + 'px';
     chevron.style.transform = 'rotate(180deg)';
-    playAudio(`facts-${currentTopic}`);
+    playAudio(cardId);
   }
 }
-
 function showModal() {
   const overlay = document.getElementById('modal-overlay');
   const content = document.getElementById('modal-content');
@@ -784,17 +793,17 @@ function showModal() {
 function closeModal() {
   const overlay = document.getElementById('modal-overlay');
   const content = document.getElementById('modal-content');
+
   overlay.style.opacity = '0';
   content.style.transform = 'scale(0.9)';
   content.style.opacity = '0';
+
   setTimeout(() => {
     overlay.style.display = 'none';
   }, 300);
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    document.querySelectorAll('.audio-ripple').forEach(el => el.classList.remove('playing'));
-  }
+
+  // 🔥 just call this directly
+  stopAudio();
 }
 
 // Close modal on overlay click
