@@ -729,9 +729,16 @@ function toggleCard(cardId) {
   const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
 
   if (isExpanded) {
-    content.style.maxHeight = '0px';
-    chevron.style.transform = 'rotate(0deg)';
-  } else {
+  content.style.maxHeight = '0px';
+  chevron.style.transform = 'rotate(0deg)';
+
+  // 🔥 stop audio when closing
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    document.querySelectorAll('.audio-ripple').forEach(el => el.classList.remove('playing'));
+  }
+} else {
     content.style.maxHeight = content.scrollHeight + 'px';
     chevron.style.transform = 'rotate(180deg)';
     playAudio(cardId);
